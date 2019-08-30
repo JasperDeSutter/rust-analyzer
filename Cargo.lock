@@ -1089,6 +1089,7 @@ dependencies = [
  "ra_fmt 0.1.0",
  "ra_hir 0.1.0",
  "ra_prof 0.1.0",
+ "ra_shims 0.1.0",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
  "rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1177,6 +1178,13 @@ version = "0.1.0-pre.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ra_shims"
+version = "0.1.0"
+dependencies = [
+ "web-sys 0.3.27 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

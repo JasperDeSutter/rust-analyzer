@@ -1,3 +1,5 @@
+#![cfg(target_arch = "wasm32")]
+
 use ra_ide_api::Analysis;
 use wasm_bindgen::prelude::*;
 

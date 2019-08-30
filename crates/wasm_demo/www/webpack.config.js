@@ -1,4 +1,4 @@
-const path = require('path');
+const path = require("path");
 const HtmlWebPackPlugin = require("html-webpack-plugin");
 
 module.exports = {
@@ -8,7 +8,7 @@ module.exports = {
         "editor.worker": "monaco-editor/esm/vs/editor/editor.worker.js",
     },
     output: {
-        globalObject: 'self',
+        globalObject: "self",
         filename: "[name].bundle.js",
         path: path.resolve(__dirname, "dist"),
     },

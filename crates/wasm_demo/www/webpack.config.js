@@ -1,14 +1,28 @@
-const CopyWebpackPlugin = require("copy-webpack-plugin");
 const path = require('path');
+const HtmlWebPackPlugin = require("html-webpack-plugin");
 
 module.exports = {
-  entry: "./bootstrap.js",
-  output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "bootstrap.js",
-  },
   mode: "development",
+  entry: {
+    app: "./bootstrap.js",
+    "editor.worker": "monaco-editor/esm/vs/editor/editor.worker.js",
+  },
+  output: {
+    globalObject: "self",
+    filename: "[name].bundle.js",
+    path: path.resolve(__dirname, "dist"),
+  },
+  module: {
+    rules: [
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"]
+      }
+    ]
+  },
   plugins: [
-    new CopyWebpackPlugin(['index.html'])
+    new HtmlWebPackPlugin({
+      title: "Rust Analyzer"
+    })
   ],
 };

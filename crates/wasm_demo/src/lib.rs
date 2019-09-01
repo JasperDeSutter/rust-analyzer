@@ -1,7 +1,7 @@
 #![cfg(target_arch = "wasm32")]
 #![allow(non_snake_case)]
 
-use ra_ide_api::{Analysis, FileId, FilePosition, LineCol, Severity};
+use ra_ide_api::{Analysis, FileId, FilePosition, FileRange, LineCol, Severity};
 use ra_syntax::{SyntaxKind, TextRange};
 use wasm_bindgen::prelude::*;
 
@@ -35,22 +35,24 @@ impl WorldState {
         self.analysis = analysis;
         self.file_id = file_id;
 
-
-        // let result: Vec<_> = self.analysis.highlight(file_id).unwrap().iter().map(|hl| Highlight {
-        //     tag: hl.tag,
-        //     range: self.range(hl.range)
-        // }).collect();
+        let highlights: Vec<_> = self
+            .analysis
+            .highlight(file_id)
+            .unwrap()
+            .into_iter()
+            .map(|hl| Highlight { tag: Some(hl.tag), range: self.range(hl.range) })
+            .collect();
 
         let diagnostics: Vec<_> = self
             .analysis
             .diagnostics(self.file_id)
             .unwrap()
-            .iter()
+            .into_iter()
             .map(|d| {
                 let Range { startLineNumber, startColumn, endLineNumber, endColumn } =
                     self.range(d.range);
                 Diagnostic {
-                    message: d.message.clone(),
+                    message: d.message,
                     severity: match d.severity {
                         Severity::Error => 8,
                         Severity::WeakWarning => 1,
@@ -63,7 +65,7 @@ impl WorldState {
             })
             .collect();
 
-        serde_wasm_bindgen::to_value(&UpdateResult { diagnostics }).unwrap()
+        serde_wasm_bindgen::to_value(&UpdateResult { diagnostics, highlights }).unwrap()
     }
 
     fn file_pos(&self, line: u32, col_utf16: u32) -> FilePosition {
@@ -84,6 +86,19 @@ impl WorldState {
             endLineNumber: end.line + 1,
             endColumn: end.col_utf16 + 1,
         }
+    }
+
+    fn file_range(
+        &self,
+        start_line: u32,
+        start_col_utf16: u32,
+        end_line: u32,
+        end_col_utf16: u32,
+    ) -> FileRange {
+        let from = self.file_pos(start_line, start_col_utf16);
+        let to = self.file_pos(end_line, end_col_utf16);
+
+        FileRange { file_id: self.file_id, range: TextRange::from_to(from.offset, to.offset) }
     }
 
     pub fn on_dot_typed(&self, line_number: u32, column: u32) {
@@ -145,7 +160,26 @@ impl WorldState {
         };
 
         let res: Vec<_> =
-            info.into_iter().map(|r| Highlight { range: self.range(r.range) }).collect();
+            info.into_iter().map(|r| Highlight { tag: None, range: self.range(r.range) }).collect();
         serde_wasm_bindgen::to_value(&res).unwrap()
+    }
+
+    pub fn actions(
+        &self,
+        start_line_number: u32,
+        start_column: u32,
+        end_line_number: u32,
+        end_column: u32,
+    ) -> JsValue {
+        let range = self.file_range(start_line_number, start_column, end_line_number, end_column);
+        log::warn!("actions");
+
+        // pub id: AssistId,
+        // pub change: SourceChange,
+        let result: Vec<_> = self.analysis.assists(range).unwrap(); //.iter().map(|assist| ).collect()
+        log::warn!("{:#?}", result);
+
+        JsValue::NULL
+        // serde_wasm_bindgen::to_value(&result).unwrap()
     }
 }

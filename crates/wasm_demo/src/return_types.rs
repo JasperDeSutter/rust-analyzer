@@ -34,6 +34,7 @@ pub struct Command {
 
 #[derive(Serialize)]
 pub struct Highlight {
+    pub tag: Option<&'static str>,
     pub range: Range,
 }
 
@@ -46,6 +47,7 @@ pub struct Highlight {
 #[derive(Serialize)]
 pub struct UpdateResult {
     pub diagnostics: Vec<Diagnostic>,
+    pub highlights: Vec<Highlight>,
 }
 
 #[derive(Serialize)]

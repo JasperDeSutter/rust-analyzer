@@ -53,91 +53,121 @@ self.MonacoEnvironment = {
     getWorkerUrl: () => "./editor.worker.bundle.js",
 };
 
-monaco.languages.register({
+const modeId = "ra-rust" // not "rust" to circumvent conflict
+monaco.languages.register({ // language for editor
+    id: modeId,
+});
+monaco.languages.register({ // language for hover info
     id: "rust",
-    extensions: [".rs", ".rlib"],
-    aliases: ["Rust", "rust"],
 });
 
-monaco.languages.onLanguage("rust", async () => {
+monaco.languages.onLanguage(modeId, async () => {
     const { WorldState } = await wasm_demo;
 
-    const [model] = monaco.editor.getModels();
+    // let editActionId = myEditor.addCommand(0, (...args) => {
+    //     console.warn(args)
+    // })
+
     const state = new WorldState();
+
+    const [model] = monaco.editor.getModels();
+    let allTokens = []
 
     function update() {
         const res = state.update(model.getValue())
-        monaco.editor.setModelMarkers(model, "rust", res.diagnostics)
+        monaco.editor.setModelMarkers(model, modeId, res.diagnostics)
+        allTokens = res.highlights
     }
     update()
 
     let timeout = 0
     model.onDidChangeContent(e => {
-        if (timeout != 0) {
-            clearTimeout(timeout)
-        }
-        console.warn('update')
-        timeout = setTimeout(update)
+        update()
+        // if (timeout != 0) {
+        //     clearTimeout(timeout)
+        // }
+        // console.warn('update')
+        // timeout = setTimeout(update)
     })
 
+    monaco.languages.setLanguageConfiguration(modeId, rust_conf.conf);
     monaco.languages.setLanguageConfiguration("rust", rust_conf.conf);
     monaco.languages.setMonarchTokensProvider("rust", rust_conf.language);
 
     // This panics when typing:
-    // monaco.languages.registerCompletionItemProvider("rust", {
+    // monaco.languages.registerCompletionItemProvider(modeId, {
     //     triggerCharacters: ["."],
     //     provideCompletionItems: (_, pos) => state.on_dot_typed(pos.lineNumber, pos.column),
     // });
 
-    monaco.languages.registerHoverProvider("rust", {
+    monaco.languages.registerHoverProvider(modeId, {
         provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column),
     });
-    monaco.languages.registerCodeLensProvider("rust", {
+    monaco.languages.registerCodeLensProvider(modeId, {
         provideCodeLenses: () => state.code_lenses(),
     });
-    monaco.languages.registerReferenceProvider("rust", {
+    monaco.languages.registerReferenceProvider(modeId, {
         provideReferences: (m, pos) => state.references(pos.lineNumber, pos.column).map(({ range }) => ({ uri: m.uri, range })),
     });
-    monaco.languages.registerDocumentHighlightProvider("rust", {
+    monaco.languages.registerDocumentHighlightProvider(modeId, {
         provideDocumentHighlights: (_, pos) => state.references(pos.lineNumber, pos.column),
     });
+    monaco.languages.registerCodeActionProvider(modeId, {
+        provideCodeActions: (_, range) => (console.warn("provide actions"), state.actions(range.startLineNumber, range.startColumn, range.endLineNumber, range.endColumn)),
+    })
 
-    // class TokenState {
-    //     constructor(line = 0) {
-    //         this.line = line
-    //     }
-    //     clone() {
-    //         let res = new TokenState(this.line)
-    //         res.line += 1
-    //         return res
-    //     }
+    class TokenState {
+        constructor(line = 0) {
+            this.line = line
+        }
+        clone() {
+            let res = new TokenState(this.line)
+            res.line += 1
+            return res
+        }
 
-    //     equals(other) {
-    //         return true
-    //     }
-    // }
+        equals(other) {
+            return true
+        }
+    }
 
-    // monaco.languages.setTokensProvider("rust", {
-    //     getInitialState: () => new TokenState(),
-    //     tokenize(line, state) {
+    function fixTag(tag) {
+        switch (tag) {
+            case "literal": return "number";
+            case "function": return "identifier";
+            default: return tag;
+        }
+    }
 
-    //         const tokens = allTokens
-    //             .filter(token => token.range.startLineNumber == state.line)
-    //             .map(token => ({
-    //                 startIndex: token.range.startColumn - 1,
-    //                 scopes: token.tag,
-    //             }))
+    monaco.languages.setTokensProvider(modeId, {
+        getInitialState: () => new TokenState(),
+        tokenize(line, state) {
+            const filteredTokens = allTokens
+                .filter(token => token.range.startLineNumber == state.line)
 
-    //         return {
-    //             tokens,
-    //             endState: new TokenState(state.line + 1)
-    //         }
-    //     }
-    // })
+            const tokens = filteredTokens.map(token => ({
+                startIndex: token.range.startColumn - 1,
+                scopes: fixTag(token.tag),
+            }))
+            // add tokens inbetween highlighted ones to remove color artifacts 
+            tokens.push(...filteredTokens
+                .filter((tok, i) => !tokens[i + 1] || tokens[i + 1].startIndex > (tok.range.endColumn - 1))
+                .map(token => ({
+                    startIndex: token.range.endColumn - 1,
+                    scopes: 'operator',
+                })))
+            tokens.sort((a, b) => a.startIndex - b.startIndex)
+
+            return {
+                tokens,
+                endState: new TokenState(state.line + 1)
+            }
+        }
+    })
 })
 
-monaco.editor.create(document.body, {
+const myEditor = monaco.editor.create(document.body, {
     theme: "vs-dark",
     value: example_code,
-    language: "rust",
+    language: modeId,
 });

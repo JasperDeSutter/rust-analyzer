@@ -6,3 +6,4 @@ incremental = true
 debug = 1 # only line info
 
 [patch.'crates-io']
+instant = { git = "https://github.com/JasperDeSutter/instant.git" }

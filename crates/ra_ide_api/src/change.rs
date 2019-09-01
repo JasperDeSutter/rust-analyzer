@@ -223,7 +223,7 @@ impl RootDatabase {
 
     pub(crate) fn maybe_collect_garbage(&mut self) {
         if self.last_gc_check.elapsed() > GC_COOLDOWN {
-            self.last_gc_check = ra_shims::Instant::now();
+            self.last_gc_check = instant::Instant::now();
             let retained_trees = syntax_tree_stats(self).retained;
             if retained_trees > 100 {
                 log::info!("automatic garbadge collection, {} retained trees", retained_trees);
@@ -234,7 +234,7 @@ impl RootDatabase {
 
     pub(crate) fn collect_garbage(&mut self) {
         let _p = profile("RootDatabase::collect_garbage");
-        self.last_gc = ra_shims::Instant::now();
+        self.last_gc = instant::Instant::now();
 
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
 

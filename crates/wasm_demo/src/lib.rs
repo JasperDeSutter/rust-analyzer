@@ -23,10 +23,25 @@ pub struct WorldState {
 #[wasm_bindgen]
 impl WorldState {
     #[wasm_bindgen(constructor)]
-    pub fn new(code: String) -> Self {
-        let (analysis, file_id) = Analysis::from_single_file(code);
-
+    pub fn new() -> Self {
+        let (analysis, file_id) = Analysis::from_single_file("".to_owned());
         Self { analysis, file_id }
+    }
+
+    pub fn update(&mut self, code: String) -> JsValue {
+        // TODO: how to update analyisis source?
+        let (analysis, file_id) = Analysis::from_single_file(code);
+        self.analysis = analysis;
+        self.file_id = file_id;
+
+        JsValue::NULL
+
+        // let result: Vec<_> = self.analysis.highlight(file_id).unwrap().iter().map(|hl| Highlight {
+        //     tag: hl.tag,
+        //     range: self.range(hl.range)
+        // }).collect();
+
+        // serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
     fn file_pos(&self, line: u32, col_utf16: u32) -> FilePosition {
@@ -90,12 +105,25 @@ impl WorldState {
                     range,
                     command: Some(Command {
                         id: "rust-analyzer.showReferences".into(),
-                        title: "1 implementation".into(), // TODO: actual implementation, or use resolve
+                        title: "0 implementations".into(), // TODO: actual implementation, or use resolve
                     }),
                 }
             })
             .collect();
 
         serde_wasm_bindgen::to_value(&results).unwrap()
+    }
+
+    pub fn references(&self, line_number: u32, column: u32) -> JsValue {
+        let pos = self.file_pos(line_number, column);
+        log::warn!("references");
+        let info = match self.analysis.find_all_refs(pos).unwrap() {
+            Some(info) => info,
+            _ => return JsValue::NULL,
+        };
+
+        let res: Vec<_> =
+            info.into_iter().map(|r| Highlight { range: self.range(r.range) }).collect();
+        serde_wasm_bindgen::to_value(&res).unwrap()
     }
 }

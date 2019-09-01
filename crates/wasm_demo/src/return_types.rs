@@ -32,3 +32,8 @@ pub struct Command {
     pub title: String,
     // pub arguments: Vec<String>,
 }
+
+#[derive(Serialize)]
+pub struct Highlight {
+    pub range: Range,
+}

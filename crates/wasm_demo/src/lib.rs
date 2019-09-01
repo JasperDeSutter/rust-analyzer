@@ -1,7 +1,7 @@
 #![cfg(target_arch = "wasm32")]
 
 use ra_ide_api::{Analysis, FileId, FilePosition, LineCol};
-use ra_syntax::TextRange;
+use ra_syntax::{SyntaxKind, TextRange};
 use wasm_bindgen::prelude::*;
 
 mod return_types;
@@ -51,7 +51,7 @@ impl WorldState {
 
     pub fn on_dot_typed(&self, line_number: u32, column: u32) {
         let pos = self.file_pos(line_number, column);
-        log::trace!("on_dot_typed");
+        log::warn!("on_dot_typed");
         let res = self.analysis.on_dot_typed(pos).unwrap();
 
         log::debug!("{:?}", res);
@@ -59,7 +59,7 @@ impl WorldState {
 
     pub fn hover(&self, line_number: u32, column: u32) -> JsValue {
         let pos = self.file_pos(line_number, column);
-        log::trace!("hover");
+        log::warn!("hover");
         let info = match self.analysis.hover(pos).unwrap() {
             Some(info) => info,
             _ => return JsValue::NULL,
@@ -70,5 +70,32 @@ impl WorldState {
             Hover { contents: vec![MarkdownString { value }], range: self.range(info.range) };
 
         serde_wasm_bindgen::to_value(&hover).unwrap()
+    }
+
+    pub fn code_lenses(&self) -> JsValue {
+        log::warn!("code_lenses");
+
+        let results: Vec<_> = self
+            .analysis
+            .file_structure(self.file_id)
+            .unwrap()
+            .into_iter()
+            .filter(|it| match it.kind {
+                SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
+                _ => false,
+            })
+            .map(|it| {
+                let range = self.range(it.node_range);
+                CodeLensSymbol {
+                    range,
+                    command: Some(Command {
+                        id: "rust-analyzer.showReferences".into(),
+                        title: "1 implementation".into(), // TODO: actual implementation, or use resolve
+                    }),
+                }
+            })
+            .collect();
+
+        serde_wasm_bindgen::to_value(&results).unwrap()
     }
 }

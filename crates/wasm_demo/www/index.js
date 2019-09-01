@@ -41,7 +41,6 @@ import "monaco-editor/esm/vs/editor/standalone/browser/quickOpen/quickCommand";
 import "monaco-editor/esm/vs/editor/standalone/browser/toggleHighContrast/toggleHighContrast";
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
-import { registerLanguage } from "monaco-editor/esm/vs/basic-languages/_.contribution";
 import * as rust_conf from "monaco-editor/esm/vs/basic-languages/rust/rust";
 
 import example_code from "./example-code"
@@ -49,17 +48,15 @@ const wasm_demo = import("wasm_demo")
 
 import "./index.css";
 
-registerLanguage({
-    id: "rust",
-    extensions: [".rs", ".rlib"],
-    aliases: ["Rust", "rust"],
-    loader: () => Promise.resolve(rust_conf),
-})
-
 self.MonacoEnvironment = {
     getWorkerUrl: () => "./editor.worker.bundle.js",
 };
 
+monaco.languages.register({
+    id: "rust",
+    extensions: [".rs", ".rlib"],
+    aliases: ["Rust", "rust"],
+})
 monaco.editor.create(document.body, {
     theme: "vs-dark",
     value: example_code,
@@ -72,13 +69,18 @@ async function setupMode() {
     const models = monaco.editor.getModels()
     const state = new WorldState(models[0].getValue())
 
+    monaco.languages.setLanguageConfiguration("rust", rust_conf.conf)
+    monaco.languages.setMonarchTokensProvider("rust", rust_conf.language)
     monaco.languages.registerCompletionItemProvider("rust", {
         triggerCharacters: ["."],
-        provideCompletionItems: (_, position) => state.on_dot_typed(position.lineNumber, position.column),
+        provideCompletionItems: (_, pos) => state.on_dot_typed(pos.lineNumber, pos.column),
     });
 
     monaco.languages.registerHoverProvider("rust", {
-        provideHover: (_, position) => state.hover(position.lineNumber, position.column)
+        provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column)
+    })
+    monaco.languages.registerCodeLensProvider("rust", {
+        provideCodeLenses: () => state.code_lenses(),
     })
 }
 

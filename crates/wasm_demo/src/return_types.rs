@@ -38,11 +38,11 @@ pub struct Highlight {
     pub range: Range,
 }
 
-// #[derive(Serialize)]
-// pub struct TextEdit {
-//     pub range: Range,
-//     pub text: String,
-// }
+#[derive(Serialize)]
+pub struct TextEdit {
+    pub range: Range,
+    pub text: String,
+}
 
 #[derive(Serialize)]
 pub struct UpdateResult {
@@ -58,4 +58,10 @@ pub struct Diagnostic {
     pub endLineNumber: u32,
     pub endColumn: u32,
     pub severity: u32,
+}
+
+#[derive(Serialize)]
+pub struct RenameLocation {
+    pub range: Range,
+    pub text: String,
 }

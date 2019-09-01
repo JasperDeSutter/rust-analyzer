@@ -182,4 +182,37 @@ impl WorldState {
         JsValue::NULL
         // serde_wasm_bindgen::to_value(&result).unwrap()
     }
+
+    pub fn prepare_rename(&self, line_number: u32, column: u32) -> JsValue {
+        let pos = self.file_pos(line_number, column);
+        log::warn!("prepare_rename");
+        let refs = match self.analysis.find_all_refs(pos).unwrap() {
+            None => return JsValue::NULL,
+            Some(refs) => refs,
+        };
+
+        let declaration = refs.declaration();
+        let range = self.range(declaration.range());
+        let text = declaration.name().to_string();
+
+        serde_wasm_bindgen::to_value(&RenameLocation { range, text }).unwrap()
+    }
+
+    pub fn rename(&self, line_number: u32, column: u32, new_name: &str) -> JsValue {
+        let pos = self.file_pos(line_number, column);
+        log::warn!("rename");
+        let change = match self.analysis.rename(pos, new_name) {
+            Ok(Some(change)) => change,
+            _ => return JsValue::NULL,
+        };
+
+        let result: Vec<_> = change
+            .source_file_edits
+            .iter()
+            .flat_map(|sfe| sfe.edit.as_atoms())
+            .map(|atom| TextEdit { range: self.range(atom.delete), text: atom.insert.clone() })
+            .collect();
+
+        serde_wasm_bindgen::to_value(&result).unwrap()
+    }
 }

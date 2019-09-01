@@ -74,21 +74,14 @@ monaco.languages.onLanguage(modeId, async () => {
     let allTokens = []
 
     function update() {
+        console.warn("update")
         const res = state.update(model.getValue())
         monaco.editor.setModelMarkers(model, modeId, res.diagnostics)
         allTokens = res.highlights
     }
     update()
 
-    let timeout = 0
-    model.onDidChangeContent(e => {
-        update()
-        // if (timeout != 0) {
-        //     clearTimeout(timeout)
-        // }
-        // console.warn('update')
-        // timeout = setTimeout(update)
-    })
+    model.onDidChangeContent(update)
 
     monaco.languages.setLanguageConfiguration(modeId, rust_conf.conf);
     monaco.languages.setLanguageConfiguration("rust", rust_conf.conf);
@@ -115,19 +108,29 @@ monaco.languages.onLanguage(modeId, async () => {
     monaco.languages.registerCodeActionProvider(modeId, {
         provideCodeActions: (_, range) => (console.warn("provide actions"), state.actions(range.startLineNumber, range.startColumn, range.endLineNumber, range.endColumn)),
     })
+    monaco.languages.registerRenameProvider(modeId, {
+        provideRenameEdits: (m, pos, newName) => {
+            let edits = state.rename(pos.lineNumber, pos.column, newName)
+            if (!edits) return null
+            return {
+                edits: [{
+                    resource: m.uri,
+                    edits
+                }]
+            }
+        },
+        resolveRenameLocation: (_, pos) => state.prepare_rename(pos.lineNumber, pos.column),
+    })
 
     class TokenState {
         constructor(line = 0) {
             this.line = line
+            this.equals = () => true
         }
         clone() {
             let res = new TokenState(this.line)
             res.line += 1
             return res
-        }
-
-        equals(other) {
-            return true
         }
     }
 

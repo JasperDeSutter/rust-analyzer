@@ -1,3 +1,4 @@
+// @ts-check
 import "monaco-editor/esm/vs/editor/browser/controller/coreCommands";
 import "monaco-editor/esm/vs/editor/browser/widget/codeEditorWidget";
 import "monaco-editor/esm/vs/editor/browser/widget/diffEditorWidget";
@@ -63,18 +64,21 @@ monaco.languages.onLanguage("rust", async () => {
 
     const [model] = monaco.editor.getModels();
     const state = new WorldState();
-   
+
+    function update() {
+        const res = state.update(model.getValue())
+        monaco.editor.setModelMarkers(model, "rust", res.diagnostics)
+    }
+    update()
+
     let timeout = 0
     model.onDidChangeContent(e => {
         if (timeout != 0) {
             clearTimeout(timeout)
         }
         console.warn('update')
-        timeout = setTimeout(() => state.update(model.getValue()))
+        timeout = setTimeout(update)
     })
-    
-    const allTokens = state.update(model.getValue())
-
 
     monaco.languages.setLanguageConfiguration("rust", rust_conf.conf);
     monaco.languages.setMonarchTokensProvider("rust", rust_conf.language);
@@ -90,7 +94,6 @@ monaco.languages.onLanguage("rust", async () => {
     });
     monaco.languages.registerCodeLensProvider("rust", {
         provideCodeLenses: () => state.code_lenses(),
-        resolveCodeLens: (_, lens) => console.log('resolve lens', lens) // only triggered when not supplying command
     });
     monaco.languages.registerReferenceProvider("rust", {
         provideReferences: (m, pos) => state.references(pos.lineNumber, pos.column).map(({ range }) => ({ uri: m.uri, range })),

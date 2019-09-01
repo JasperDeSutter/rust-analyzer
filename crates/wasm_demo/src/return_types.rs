@@ -1,4 +1,3 @@
-#![allow(non_snake_case)]
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
@@ -36,4 +35,25 @@ pub struct Command {
 #[derive(Serialize)]
 pub struct Highlight {
     pub range: Range,
+}
+
+// #[derive(Serialize)]
+// pub struct TextEdit {
+//     pub range: Range,
+//     pub text: String,
+// }
+
+#[derive(Serialize)]
+pub struct UpdateResult {
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+#[derive(Serialize)]
+pub struct Diagnostic {
+    pub message: String,
+    pub startLineNumber: u32,
+    pub startColumn: u32,
+    pub endLineNumber: u32,
+    pub endColumn: u32,
+    pub severity: u32,
 }

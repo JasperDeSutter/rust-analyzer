@@ -1,5 +1,7 @@
 export default `use crate::List::*;
 
+mod unresolved_module;
+
 enum List {
     // Cons: Tuple struct that wraps an element and a pointer to the next node
     Cons(u32, Box<List>),

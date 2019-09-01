@@ -1,6 +1,7 @@
 #![cfg(target_arch = "wasm32")]
+#![allow(non_snake_case)]
 
-use ra_ide_api::{Analysis, FileId, FilePosition, LineCol};
+use ra_ide_api::{Analysis, FileId, FilePosition, LineCol, Severity};
 use ra_syntax::{SyntaxKind, TextRange};
 use wasm_bindgen::prelude::*;
 
@@ -10,7 +11,7 @@ use return_types::*;
 #[wasm_bindgen(start)]
 pub fn start() {
     console_error_panic_hook::set_once();
-    console_log::init_with_level(log::Level::Trace).expect("could not install logging hook");
+    console_log::init_with_level(log::Level::Warn).expect("could not install logging hook");
     log::info!("worker initialized")
 }
 
@@ -34,14 +35,35 @@ impl WorldState {
         self.analysis = analysis;
         self.file_id = file_id;
 
-        JsValue::NULL
 
         // let result: Vec<_> = self.analysis.highlight(file_id).unwrap().iter().map(|hl| Highlight {
         //     tag: hl.tag,
         //     range: self.range(hl.range)
         // }).collect();
 
-        // serde_wasm_bindgen::to_value(&result).unwrap()
+        let diagnostics: Vec<_> = self
+            .analysis
+            .diagnostics(self.file_id)
+            .unwrap()
+            .iter()
+            .map(|d| {
+                let Range { startLineNumber, startColumn, endLineNumber, endColumn } =
+                    self.range(d.range);
+                Diagnostic {
+                    message: d.message.clone(),
+                    severity: match d.severity {
+                        Severity::Error => 8,
+                        Severity::WeakWarning => 1,
+                    },
+                    startLineNumber,
+                    startColumn,
+                    endLineNumber,
+                    endColumn,
+                }
+            })
+            .collect();
+
+        serde_wasm_bindgen::to_value(&UpdateResult { diagnostics }).unwrap()
     }
 
     fn file_pos(&self, line: u32, col_utf16: u32) -> FilePosition {

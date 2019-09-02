@@ -53,7 +53,7 @@ impl WorldState {
                 Diagnostic {
                     message: d.message,
                     severity: match d.severity {
-                        Severity::Error => 8, // monaco MarkerSeverity.Error
+                        Severity::Error => 8,       // monaco MarkerSeverity.Error
                         Severity::WeakWarning => 1, // monaco MarkerSeverity.Hint
                     },
                     startLineNumber,

@@ -41,6 +41,15 @@ fn build_docs() -> Result<()> {
 }
 
 fn build_wasm_demo() -> Result<()> {
+    // install wasm-pack if not available
+    let res = Command::new("wasm-pack").arg("--version").status();
+    if res.is_err() {
+        let status = cargo().args(&["install", "wasm-pack"]).status()?;
+        if !status.success() {
+            Err("installing wasm-pack failed")?;
+        }
+    }
+
     let status = Command::new("wasm-pack").args(&["build", "./website/src/wasm-demo"]).status()?;
     if !status.success() {
         Err("wasm-pack build failed")?;
@@ -50,8 +59,10 @@ fn build_wasm_demo() -> Result<()> {
     if !status.success() {
         Err("npm install failed")?;
     }
-    let status =
-        Command::new("npm").args(&["run", "build"]).current_dir("./website/src/wasm-demo/www").status()?;
+    let status = Command::new("npm")
+        .args(&["run", "build"])
+        .current_dir("./website/src/wasm-demo/www")
+        .status()?;
     if !status.success() {
         Err("webpack build failed")?;
     }

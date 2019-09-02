@@ -30,7 +30,6 @@ impl WorldState {
     }
 
     pub fn update(&mut self, code: String) -> JsValue {
-        // TODO: how to update analyisis source?
         let (analysis, file_id) = Analysis::from_single_file(code);
         self.analysis = analysis;
         self.file_id = file_id;
@@ -54,8 +53,8 @@ impl WorldState {
                 Diagnostic {
                     message: d.message,
                     severity: match d.severity {
-                        Severity::Error => 8,
-                        Severity::WeakWarning => 1,
+                        Severity::Error => 8, // monaco MarkerSeverity.Error
+                        Severity::WeakWarning => 1, // monaco MarkerSeverity.Hint
                     },
                     startLineNumber,
                     startColumn,

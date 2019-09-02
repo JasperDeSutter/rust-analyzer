@@ -174,3 +174,5 @@ const myEditor = monaco.editor.create(document.body, {
     value: example_code,
     language: modeId,
 });
+
+window.onresize = () => myEditor.layout()

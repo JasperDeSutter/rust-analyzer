@@ -6,6 +6,8 @@ use ra_db::{
 };
 use ra_prof::{memory_usage, profile, Bytes};
 use ra_syntax::SourceFile;
+#[cfg(not(feature = "wasm"))]
+use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
 
@@ -133,7 +135,12 @@ impl LibraryData {
         root_id: SourceRootId,
         files: Vec<(FileId, RelativePathBuf, Arc<String>)>,
     ) -> LibraryData {
-        let symbol_index = SymbolIndex::for_files(files.iter().map(|(file_id, _, text)| {
+        #[cfg(not(feature = "wasm"))]
+        let iter = files.par_iter();
+        #[cfg(feature = "wasm")]
+        let iter = files.iter();
+
+        let symbol_index = SymbolIndex::for_files(iter.map(|(file_id, _, text)| {
             let parse = SourceFile::parse(text);
             (*file_id, parse)
         }));

@@ -29,7 +29,7 @@ pub struct CodeLensSymbol {
 pub struct Command {
     pub id: String,
     pub title: String,
-    // pub arguments: Vec<String>,
+    pub positions: Vec<Range>, // customized
 }
 
 #[derive(Serialize)]

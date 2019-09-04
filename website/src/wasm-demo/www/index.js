@@ -7,6 +7,7 @@ import 'monaco-editor/esm/vs/editor/contrib/bracketMatching/bracketMatching';
 import 'monaco-editor/esm/vs/editor/contrib/caretOperations/caretOperations';
 import 'monaco-editor/esm/vs/editor/contrib/caretOperations/transpose';
 import 'monaco-editor/esm/vs/editor/contrib/clipboard/clipboard';
+import 'monaco-editor/esm/vs/editor/contrib/codeAction/codeActionContributions';
 import 'monaco-editor/esm/vs/editor/contrib/codelens/codelensController';
 import 'monaco-editor/esm/vs/editor/contrib/colorPicker/colorDetector';
 import 'monaco-editor/esm/vs/editor/contrib/comment/comment';
@@ -15,6 +16,7 @@ import 'monaco-editor/esm/vs/editor/contrib/cursorUndo/cursorUndo';
 import 'monaco-editor/esm/vs/editor/contrib/dnd/dnd';
 import 'monaco-editor/esm/vs/editor/contrib/find/findController';
 import 'monaco-editor/esm/vs/editor/contrib/folding/folding';
+import 'monaco-editor/esm/vs/editor/contrib/fontZoom/fontZoom';
 import 'monaco-editor/esm/vs/editor/contrib/format/formatActions';
 import 'monaco-editor/esm/vs/editor/contrib/goToDefinition/goToDefinitionCommands';
 import 'monaco-editor/esm/vs/editor/contrib/goToDefinition/goToDefinitionMouse';
@@ -30,15 +32,18 @@ import 'monaco-editor/esm/vs/editor/contrib/rename/rename';
 import 'monaco-editor/esm/vs/editor/contrib/smartSelect/smartSelect';
 import 'monaco-editor/esm/vs/editor/contrib/snippet/snippetController2';
 import 'monaco-editor/esm/vs/editor/contrib/suggest/suggestController';
+import 'monaco-editor/esm/vs/editor/contrib/tokenization/tokenization';
 import 'monaco-editor/esm/vs/editor/contrib/toggleTabFocusMode/toggleTabFocusMode';
 import 'monaco-editor/esm/vs/editor/contrib/wordHighlighter/wordHighlighter';
 import 'monaco-editor/esm/vs/editor/contrib/wordOperations/wordOperations';
+import 'monaco-editor/esm/vs/editor/contrib/wordPartOperations/wordPartOperations';
 import 'monaco-editor/esm/vs/editor/standalone/browser/accessibilityHelp/accessibilityHelp';
-import 'monaco-editor/esm/vs/editor/standalone/browser/inspectTokens/inspectTokens';
 import 'monaco-editor/esm/vs/editor/standalone/browser/iPadShowKeyboard/iPadShowKeyboard';
-import 'monaco-editor/esm/vs/editor/standalone/browser/quickOpen/quickOutline';
+import 'monaco-editor/esm/vs/editor/standalone/browser/inspectTokens/inspectTokens';
 import 'monaco-editor/esm/vs/editor/standalone/browser/quickOpen/gotoLine';
 import 'monaco-editor/esm/vs/editor/standalone/browser/quickOpen/quickCommand';
+import 'monaco-editor/esm/vs/editor/standalone/browser/quickOpen/quickOutline';
+import 'monaco-editor/esm/vs/editor/standalone/browser/referenceSearch/standaloneReferenceSearch';
 import 'monaco-editor/esm/vs/editor/standalone/browser/toggleHighContrast/toggleHighContrast';
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
@@ -50,7 +55,7 @@ import './index.css';
 const wasmDemo = import('wasm_demo');
 
 self.MonacoEnvironment = {
-    getWorkerUrl: () => './editor.worker.bundle.js',
+    getWorkerUrl: () => './editor.worker.bundle',
 };
 
 const modeId = 'ra-rust'; // not "rust" to circumvent conflict
@@ -63,10 +68,6 @@ monaco.languages.register({ // language for hover info
 
 monaco.languages.onLanguage(modeId, async () => {
     const { WorldState } = await wasmDemo;
-
-    // let editActionId = myEditor.addCommand(0, (...args) => {
-    //     console.warn(args)
-    // })
 
     const state = new WorldState();
 
@@ -97,7 +98,29 @@ monaco.languages.onLanguage(modeId, async () => {
         provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column),
     });
     monaco.languages.registerCodeLensProvider(modeId, {
-        provideCodeLenses: () => state.code_lenses(),
+        provideCodeLenses(m) {
+            const lenses = state.code_lenses();
+            return lenses.map(({ range, command }) => {
+                const position = {
+                    column: range.startColumn,
+                    lineNumber: range.startLineNumber,
+                };
+
+                const references = command.positions.map((pos) => ({ range: pos, uri: m.uri }));
+                return {
+                    range,
+                    command: {
+                        id: command.id,
+                        title: command.title,
+                        arguments: [
+                            m.uri,
+                            position,
+                            references,
+                        ],
+                    }
+                };
+            });
+        },
     });
     monaco.languages.registerReferenceProvider(modeId, {
         provideReferences: (m, pos) => state.references(pos.lineNumber, pos.column).map(({ range }) => ({ uri: m.uri, range })),
@@ -145,7 +168,7 @@ monaco.languages.onLanguage(modeId, async () => {
 
     monaco.languages.setTokensProvider(modeId, {
         getInitialState: () => new TokenState(),
-        tokenize(line, st) {
+        tokenize(_, st) {
             const filteredTokens = allTokens
                 .filter((token) => token.range.startLineNumber === st.line);
 

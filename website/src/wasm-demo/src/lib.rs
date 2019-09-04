@@ -135,15 +135,32 @@ impl WorldState {
                 SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
                 _ => false,
             })
-            .map(|it| {
-                let range = self.range(it.node_range);
-                CodeLensSymbol {
-                    range,
+            .filter_map(|it| {
+                let position =
+                    FilePosition { file_id: self.file_id, offset: it.node_range.start() };
+                let nav_info = self.analysis.goto_implementation(position).unwrap()?;
+
+                let title = if nav_info.info.len() == 1 {
+                    "1 implementation".into()
+                } else {
+                    format!("{} implementations", nav_info.info.len())
+                };
+
+                let positions = nav_info
+                    .info
+                    .iter()
+                    .map(|target| target.focus_range().unwrap_or(target.full_range()))
+                    .map(|range| self.range(range))
+                    .collect();
+
+                Some(CodeLensSymbol {
+                    range: self.range(it.node_range),
                     command: Some(Command {
-                        id: "rust-analyzer.showReferences".into(),
-                        title: "0 implementations".into(), // TODO: actual implementation, or use resolve
+                        id: "editor.action.showReferences".into(),
+                        title,
+                        positions,
                     }),
-                }
+                })
             })
             .collect();
 

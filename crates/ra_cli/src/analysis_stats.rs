@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use ra_db::SourceDatabase;
-use ra_hir::{Crate, HasBodySource, HasSource, HirDisplay, ImplItem, ModuleDef, Ty};
+use ra_hir::{Crate, HasBodySource, HasSource, HirDisplay, ImplItem, ModuleDef, Ty, TypeWalk};
 use ra_syntax::AstNode;
 
 use crate::Result;
@@ -110,9 +110,12 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
                         let original_file = src.file_id.original_file(db);
                         let path = db.file_relative_path(original_file);
                         let line_index = host.analysis().file_line_index(original_file).unwrap();
+                        let text_range = src
+                            .ast
+                            .either(|it| it.syntax().text_range(), |it| it.syntax().text_range());
                         let (start, end) = (
-                            line_index.line_col(src.ast.syntax().text_range().start()),
-                            line_index.line_col(src.ast.syntax().text_range().end()),
+                            line_index.line_col(text_range.start()),
+                            line_index.line_col(text_range.end()),
                         );
                         bar.println(format!(
                             "{} {}:{}-{}:{}: Expected {}, got {}",

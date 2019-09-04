@@ -1,9 +1,8 @@
-use rustc_hash::FxHashSet;
 use std::sync::Arc;
 
-use ra_syntax::ast::{AstNode, RecordLit};
+use ra_syntax::ast;
+use rustc_hash::FxHashSet;
 
-use super::{Expr, ExprId, RecordLitField};
 use crate::{
     adt::AdtDef,
     diagnostics::{DiagnosticSink, MissingFields, MissingOkInTailExpr},
@@ -11,9 +10,10 @@ use crate::{
     name,
     path::{PathKind, PathSegment},
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
-    Function, HasSource, HirDatabase, ModuleDef, Name, Path, PerNs, Resolution,
+    Function, HirDatabase, ModuleDef, Name, Path, PerNs, Resolution,
 };
-use ra_syntax::ast;
+
+use super::{Expr, ExprId, RecordLitField};
 
 pub(crate) struct ExprValidator<'a, 'b: 'a> {
     func: Function,
@@ -79,21 +79,20 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             return;
         }
         let source_map = self.func.body_source_map(db);
-        let file_id = self.func.source(db).file_id;
-        let parse = db.parse(file_id.original_file(db));
-        let source_file = parse.tree();
-        if let Some(field_list_node) = source_map
-            .expr_syntax(id)
-            .map(|ptr| ptr.to_node(source_file.syntax()))
-            .and_then(RecordLit::cast)
-            .and_then(|lit| lit.record_field_list())
-        {
-            let field_list_ptr = AstPtr::new(&field_list_node);
-            self.sink.push(MissingFields {
-                file: file_id,
-                field_list: field_list_ptr,
-                missed_fields,
-            })
+
+        if let Some(source_ptr) = source_map.expr_syntax(id) {
+            if let Some(expr) = source_ptr.ast.a() {
+                let root = source_ptr.file_syntax(db);
+                if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
+                    if let Some(field_list) = record_lit.record_field_list() {
+                        self.sink.push(MissingFields {
+                            file: source_ptr.file_id,
+                            field_list: AstPtr::new(&field_list),
+                            missed_fields,
+                        })
+                    }
+                }
+            }
         }
     }
 
@@ -133,10 +132,11 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         if params.len() == 2 && &params[0] == &mismatch.actual {
             let source_map = self.func.body_source_map(db);
-            let file_id = self.func.source(db).file_id;
 
-            if let Some(expr) = source_map.expr_syntax(id).and_then(|n| n.cast::<ast::Expr>()) {
-                self.sink.push(MissingOkInTailExpr { file: file_id, expr });
+            if let Some(source_ptr) = source_map.expr_syntax(id) {
+                if let Some(expr) = source_ptr.ast.a() {
+                    self.sink.push(MissingOkInTailExpr { file: source_ptr.file_id, expr });
+                }
             }
         }
     }

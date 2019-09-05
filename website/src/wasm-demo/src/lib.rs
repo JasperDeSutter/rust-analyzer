@@ -1,7 +1,7 @@
 #![cfg(target_arch = "wasm32")]
 #![allow(non_snake_case)]
 
-use ra_ide_api::{Analysis, FileId, FilePosition, FileRange, LineCol, Severity};
+use ra_ide_api::{Analysis, FileId, FilePosition, LineCol, Severity};
 use ra_syntax::{SyntaxKind, TextRange};
 use wasm_bindgen::prelude::*;
 
@@ -87,19 +87,6 @@ impl WorldState {
         }
     }
 
-    fn file_range(
-        &self,
-        start_line: u32,
-        start_col_utf16: u32,
-        end_line: u32,
-        end_col_utf16: u32,
-    ) -> FileRange {
-        let from = self.file_pos(start_line, start_col_utf16);
-        let to = self.file_pos(end_line, end_col_utf16);
-
-        FileRange { file_id: self.file_id, range: TextRange::from_to(from.offset, to.offset) }
-    }
-
     pub fn on_dot_typed(&self, line_number: u32, column: u32) {
         let pos = self.file_pos(line_number, column);
         log::warn!("on_dot_typed");
@@ -178,25 +165,6 @@ impl WorldState {
         let res: Vec<_> =
             info.into_iter().map(|r| Highlight { tag: None, range: self.range(r.range) }).collect();
         serde_wasm_bindgen::to_value(&res).unwrap()
-    }
-
-    pub fn actions(
-        &self,
-        start_line_number: u32,
-        start_column: u32,
-        end_line_number: u32,
-        end_column: u32,
-    ) -> JsValue {
-        let range = self.file_range(start_line_number, start_column, end_line_number, end_column);
-        log::warn!("actions");
-
-        // pub id: AssistId,
-        // pub change: SourceChange,
-        let result: Vec<_> = self.analysis.assists(range).unwrap(); //.iter().map(|assist| ).collect()
-        log::warn!("{:#?}", result);
-
-        JsValue::NULL
-        // serde_wasm_bindgen::to_value(&result).unwrap()
     }
 
     pub fn prepare_rename(&self, line_number: u32, column: u32) -> JsValue {

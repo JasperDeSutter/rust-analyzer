@@ -55,7 +55,7 @@ import './index.css';
 const wasmDemo = import('wasm_demo');
 
 self.MonacoEnvironment = {
-    getWorkerUrl: () => './editor.worker.bundle',
+    getWorkerUrl: () => './editor.worker.bundle.js',
 };
 
 const modeId = 'ra-rust'; // not "rust" to circumvent conflict
@@ -75,7 +75,7 @@ monaco.languages.onLanguage(modeId, async () => {
     let allTokens = [];
 
     function update() {
-        console.warn('update');
+        console.info('update');
         const res = state.update(model.getValue());
         monaco.editor.setModelMarkers(model, modeId, res.diagnostics);
         allTokens = res.highlights;
@@ -87,12 +87,6 @@ monaco.languages.onLanguage(modeId, async () => {
     monaco.languages.setLanguageConfiguration(modeId, rustConf.conf);
     monaco.languages.setLanguageConfiguration('rust', rustConf.conf);
     monaco.languages.setMonarchTokensProvider('rust', rustConf.language);
-
-    // This panics when typing:
-    // monaco.languages.registerCompletionItemProvider(modeId, {
-    //     triggerCharacters: ["."],
-    //     provideCompletionItems: (_, pos) => state.on_dot_typed(pos.lineNumber, pos.column),
-    // });
 
     monaco.languages.registerHoverProvider(modeId, {
         provideHover: (_, pos) => state.hover(pos.lineNumber, pos.column),
@@ -127,9 +121,6 @@ monaco.languages.onLanguage(modeId, async () => {
     });
     monaco.languages.registerDocumentHighlightProvider(modeId, {
         provideDocumentHighlights: (_, pos) => state.references(pos.lineNumber, pos.column),
-    });
-    monaco.languages.registerCodeActionProvider(modeId, {
-        provideCodeActions: (_, range) => (console.warn('provide actions'), state.actions(range.startLineNumber, range.startColumn, range.endLineNumber, range.endColumn)),
     });
     monaco.languages.registerRenameProvider(modeId, {
         provideRenameEdits: (m, pos, newName) => {
